@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Settings } from "lucide-react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/Chatinput";
@@ -33,7 +33,7 @@ interface UploadedDocument {
   id: string;
   name: string;
   size: number;
-  status: "uploading" | "processing" | "ready" | "error";
+  status: "uploading" | "processing" | "ready" | "error" | "deleting";
 }
 
 export default function Index() {
@@ -55,6 +55,28 @@ export default function Index() {
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
   );
+
+  const fetchDocuments = async () => {
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = await res.json();
+        const mappedDocs: UploadedDocument[] = data.map((doc: any) => ({
+          id: doc.id,
+          name: doc.file_name,
+          size: doc.file_size,
+          status: "ready",
+        }));
+        setDocuments(mappedDocs);
+      }
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   const handleNewConversation = () => {
     const newId = Date.now().toString();
@@ -95,7 +117,7 @@ export default function Index() {
       )
     );
 
-    // Simulate streaming response
+    // Call real API
     setIsStreaming(true);
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
@@ -112,11 +134,43 @@ export default function Index() {
       )
     );
 
-    // Simulate streaming text
-    const responseText = "This is a simulated response. In production, this would be connected to your RAG backend powered by LangGraph and Supabase, providing intelligent answers based on your uploaded documents.";
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message }),
+      });
 
-    for (let i = 0; i <= responseText.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Chat failed");
+      }
+
+      const data = await res.json();
+      const responseText = data.answer;
+
+      // Simulate streaming for aesthetic effect (since LangGraph result is returned at once)
+      for (let i = 0; i <= responseText.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversationId
+              ? {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === assistantMessage.id
+                    ? { ...m, content: responseText.slice(0, i) }
+                    : m
+                ),
+              }
+              : c
+          )
+        );
+      }
+    } catch (error: any) {
+      console.error("Chat error:", error);
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeConversationId
@@ -124,7 +178,7 @@ export default function Index() {
               ...c,
               messages: c.messages.map((m) =>
                 m.id === assistantMessage.id
-                  ? { ...m, content: responseText.slice(0, i) }
+                  ? { ...m, content: `Error: ${error.message}` }
                   : m
               ),
             }
@@ -159,16 +213,16 @@ export default function Index() {
           body: formData,
         });
 
-        if (!res.ok) {
+        if (res.ok) {
+          setDocuments((prev) =>
+            prev.map((d) =>
+              d.id === doc.id ? { ...d, status: "ready" as const } : d
+            )
+          );
+        } else {
           const errorData = await res.json();
           throw new Error(errorData.error || "Upload failed");
         }
-
-        setDocuments((prev) =>
-          prev.map((d) =>
-            d.id === doc.id ? { ...d, status: "ready" as const } : d
-          )
-        );
       } catch (error) {
         console.error("Upload error:", error);
         setDocuments((prev) =>
@@ -178,10 +232,36 @@ export default function Index() {
         );
       }
     }
+    // Refresh document list to get official IDs and correct state
+    fetchDocuments();
   };
 
-  const handleRemoveDocument = (id: string) => {
-    setDocuments(documents.filter((d) => d.id !== id));
+  const handleRemoveDocument = async (id: string) => {
+    try {
+      // Set status to deleting
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status: "deleting" as const } : d))
+      );
+
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Deletion failed");
+      }
+
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+      console.log("Document deleted successfully");
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      // Revert status to ready if deletion fails
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status: "ready" as const } : d))
+      );
+      alert("Failed to delete document: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
   };
 
   return (

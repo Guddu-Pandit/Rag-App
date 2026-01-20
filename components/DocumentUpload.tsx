@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,7 @@ interface UploadedDocument {
     id: string;
     name: string;
     size: number;
-    status: "uploading" | "processing" | "ready" | "error";
+    status: "uploading" | "processing" | "ready" | "error" | "deleting";
 }
 
 interface DocumentUploadProps {
@@ -84,16 +84,21 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
             </div>
 
             {documents.length > 0 && (
-                <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-muted-foreground/50 uppercase tracking-widest pl-1">Uploaded Assets</h3>
+                <div className="space-y-4">
+                    <h3 className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] pl-1">
+                        UPLOADED ASSETS
+                    </h3>
                     <div className="space-y-2">
                         {documents.map((doc) => (
                             <div
                                 key={doc.id}
-                                className="flex items-center gap-3 p-4 bg-[#111827]/60 border border-white/5 rounded-xl transition-all hover:bg-[#111827]/80 group"
+                                className={cn(
+                                    "flex items-center gap-3 p-4 bg-[#0f172a]/80 border border-white/5 rounded-2xl transition-all hover:bg-[#0f172a]/100 group shadow-sm",
+                                    doc.status === "deleting" && "opacity-50 grayscale-[0.5]"
+                                )}
                             >
-                                <div className="w-10 h-10 bg-[#1e293b] rounded-lg flex items-center justify-center border border-white/5">
-                                    <FileText className="w-5 h-5 text-[#2dd4bf]" />
+                                <div className="w-10 h-10 bg-[#1e293b] rounded-xl flex items-center justify-center border border-white/5">
+                                    <FileText className={cn("w-5 h-5", doc.status === "deleting" ? "text-red-400" : "text-[#2dd4bf]")} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold truncate text-foreground/90">{doc.name}</p>
@@ -101,9 +106,9 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
                                         {formatSize(doc.size)}
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     {doc.status === "ready" && (
-                                        <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                                        <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-500/10" />
                                     )}
                                     {doc.status === "uploading" && (
                                         <div className="w-4 h-4 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin" />
@@ -111,11 +116,18 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
                                     {doc.status === "processing" && (
                                         <span className="text-[10px] font-bold text-[#2dd4bf] uppercase tracking-tighter animate-pulse">Processing</span>
                                     )}
+                                    {doc.status === "deleting" && (
+                                        <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                    )}
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => onRemove(doc.id)}
-                                        className="h-8 w-8 text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all"
+                                        disabled={doc.status === "deleting" || doc.status === "uploading"}
+                                        className={cn(
+                                            "h-8 w-8 text-white/20 hover:text-white/60 hover:bg-white/5 rounded-lg transition-all",
+                                            doc.status === "deleting" && "text-red-500/50"
+                                        )}
                                     >
                                         <X className="w-4 h-4" />
                                     </Button>
