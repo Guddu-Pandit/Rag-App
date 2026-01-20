@@ -14,7 +14,7 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
         <div
             className={cn(
                 "flex gap-4 p-5 rounded-[20px] transition-all duration-300",
-                isUser ? "bg-[#111827]/50 border border-white/5" : "bg-[#161d2b] border border-[#2dd4bf]/10 shadow-lg"
+                isUser ? "bg-muted/30 border border-white/5" : "bg-card border border-[#2dd4bf]/10 shadow-lg"
             )}
         >
             <div

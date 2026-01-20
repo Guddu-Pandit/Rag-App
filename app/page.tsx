@@ -15,7 +15,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { uploadDocument } from "@/app/actions/uploadDocument";
 
 interface Message {
   id: string;
@@ -155,7 +154,15 @@ export default function Index() {
         const formData = new FormData();
         formData.append("file", file);
 
-        await uploadDocument(formData);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Upload failed");
+        }
 
         setDocuments((prev) =>
           prev.map((d) =>

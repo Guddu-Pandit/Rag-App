@@ -34,7 +34,7 @@ export function ConversationSidebar({
     return (
         <div
             className={cn(
-                "h-full bg-[#0a0f1d] border-r border-white/5 flex flex-col transition-all duration-300 shadow-xl",
+                "h-full bg-sidebar border-r border-white/5 flex flex-col transition-all duration-300 shadow-xl",
                 isCollapsed ? "w-16" : "w-72"
             )}
         >
@@ -61,7 +61,7 @@ export function ConversationSidebar({
                 <Button
                     onClick={onNew}
                     className={cn(
-                        "w-full bg-[#111827] hover:bg-[#1a2333] text-[#2dd4bf] border border-[#2dd4bf]/20 rounded-xl transition-all duration-200 shadow-[0_0_15px_rgba(45,45,45,0.2)] font-medium",
+                        "w-full bg-card hover:bg-accent text-[#2dd4bf] border border-[#2dd4bf]/20 rounded-xl transition-all duration-200 shadow-[0_0_15px_rgba(45,45,45,0.2)] font-medium",
                         isCollapsed && "px-0"
                     )}
                 >

@@ -67,7 +67,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             )}
 
             {/* Input Box */}
-            <div className="relative bg-[#111827]/80 backdrop-blur-xl border border-white/5 rounded-[24px] p-3 pl-5 shadow-2xl shadow-[0_0_15px_rgba(45,45,45,0.2)] transition-all duration-300 group-focus-within:border-[#2dd4bf]/30">
+            <div className="relative bg-card/80 backdrop-blur-xl border border-white/5 rounded-[24px] p-3 pl-5 shadow-2xl shadow-[0_0_15px_rgba(45,45,45,0.2)] transition-all duration-300 group-focus-within:border-[#2dd4bf]/30">
                 <div className="flex items-end gap-2">
                     <input
                         type="file"
