@@ -13,7 +13,7 @@ const GraphState = Annotation.Root({
 // Initialize the model
 const model = new ChatGoogleGenerativeAI({
     apiKey: process.env.GEMINI_APT_KEY,
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     temperature: 0,
 });
 
@@ -41,13 +41,23 @@ const generate = async (state: typeof GraphState.State) => {
     const { question, context } = state;
 
     const contextText = context.join("\n\n");
-    const prompt = `You are a helpful assistant. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
-  
-  Context: ${contextText}
-  
-  Question: ${question}
-  
-  Answer:`;
+    const prompt = `You are an accurate RAG (retrieval-augmented) assistant. Answer the question using only the provided context.  
+        Do NOT add information that is not explicitly supported by the context.
+
+        <Context>
+        ${contextText}
+        </Context>
+
+        <Question>
+        ${question}
+        </Question>
+
+        Instructions:
+        • Use a confident but neutral tone
+        • If the context does not contain the answer → reply with: "Not enough information."
+        • Do not explain why you don't know — just use the sentence above
+
+        Answer:`;
 
     const response = await model.invoke(prompt);
     return { answer: response.content.toString() };

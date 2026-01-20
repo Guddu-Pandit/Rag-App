@@ -30,9 +30,22 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
                     {isUser ? "You" : "Assistant"}
                 </p>
                 <div className="text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {content}
-                    {isStreaming && (
-                        <span className="inline-block w-2 h-4 ml-1 bg-[#2dd4bf] animate-pulse rounded-sm" />
+                    {!isUser && content === "" && isStreaming ? (
+                        <span className="flex items-center gap-1.5 text-muted-foreground italic">
+                            Thinking
+                            <span className="flex gap-0.5">
+                                <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                <span className="w-1 h-1 bg-current rounded-full animate-bounce" />
+                            </span>
+                        </span>
+                    ) : (
+                        <>
+                            {content}
+                            {isStreaming && (
+                                <span className="inline-block w-2 h-4 ml-1 bg-[#2dd4bf] animate-pulse rounded-sm" />
+                            )}
+                        </>
                     )}
                 </div>
             </div>

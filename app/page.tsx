@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FileText, Settings } from "lucide-react";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/Chatinput";
@@ -48,13 +48,52 @@ export default function Index() {
     },
   ]);
   const [activeConversationId, setActiveConversationId] = useState<string>("1");
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedConversations = localStorage.getItem("ragapp-conversations");
+    const savedActiveId = localStorage.getItem("ragapp-active-conversation");
+
+    if (savedConversations) {
+      try {
+        const parsed = JSON.parse(savedConversations);
+        // Revive dates
+        const revivedConversations = parsed.map((c: any) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+        }));
+        setConversations(revivedConversations);
+      } catch (e) {
+        console.error("Failed to parse saved conversations", e);
+      }
+    }
+
+    if (savedActiveId) {
+      setActiveConversationId(savedActiveId);
+    }
+  }, []);
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem("ragapp-conversations", JSON.stringify(conversations));
+    localStorage.setItem("ragapp-active-conversation", activeConversationId);
+  }, [conversations, activeConversationId]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
   );
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [activeConversation?.messages]);
 
   const fetchDocuments = async () => {
     try {
@@ -109,15 +148,14 @@ export default function Index() {
     };
 
     // Add user message
-    setConversations(
-      conversations.map((c) =>
-        c.id === activeConversationId
-          ? { ...c, messages: [...c.messages, userMessage] }
-          : c
-      )
-    );
+    // Determine new title if needed
+    let newTitle = "";
+    const activeConv = conversations.find(c => c.id === activeConversationId);
+    if (activeConv && activeConv.title === "New Chat") {
+      newTitle = message.length > 30 ? message.slice(0, 30) + "..." : message;
+    }
 
-    // Call real API
+    // Add user message and empty assistant message
     setIsStreaming(true);
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
@@ -125,13 +163,17 @@ export default function Index() {
       content: "",
     };
 
-    // Add empty assistant message
-    setConversations(
-      conversations.map((c) =>
-        c.id === activeConversationId
-          ? { ...c, messages: [...c.messages, userMessage, assistantMessage] }
-          : c
-      )
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id === activeConversationId) {
+          return {
+            ...c,
+            title: newTitle || c.title,
+            messages: [...c.messages, userMessage, assistantMessage],
+          };
+        }
+        return c;
+      })
     );
 
     try {
@@ -336,6 +378,7 @@ export default function Index() {
                 }
               />
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
