@@ -338,7 +338,7 @@ export default function Index() {
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all duration-300 rounded-full px-4 font-medium">
+                <Button variant="ghost" size="sm" className="gap-2 border border-primary/20 hover:bg-primary hover:text-white transition-all duration-300 rounded-full px-4 font-medium">
                   <FileText className="w-4 h-4" />
                   Documents
                 </Button>

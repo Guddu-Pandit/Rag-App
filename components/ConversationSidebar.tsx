@@ -81,8 +81,8 @@ export function ConversationSidebar({
                             className={cn(
                                 "group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200",
                                 activeId === conv.id
-                                    ? "bg-[#162731] text-[#2dd4bf] border border-[#2dd4bf]/10"
-                                    : "hover:bg-white/5 text-muted-foreground hover:text-foreground"
+                                    ? "bg-secondary text-primary border border-primary/20"
+                                    : "hover:bg-accent/40 text-muted-foreground hover:text-foreground"
                             )}
                         >
                             <MessageSquare className={cn(

@@ -53,8 +53,8 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
                 className={cn(
                     "border-2 border-dashed rounded-[20px] p-12 text-center transition-all cursor-pointer relative overflow-hidden group",
                     isDragging
-                        ? "border-[#2dd4bf] bg-[#2dd4bf]/5"
-                        : "border-[#2dd4bf]/20 hover:border-[#2dd4bf]/40 bg-[#0f172a]/40"
+                        ? "border-primary bg-primary/5"
+                        : "border-border/40 hover:border-primary/40 bg-muted/20"
                 )}
             >
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#2dd4bf]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -71,8 +71,8 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
                     }}
                 />
                 <label htmlFor="file-upload" className="cursor-pointer relative z-10 block">
-                    <div className="w-16 h-16 bg-[#1e293b] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/5 shadow-xl">
-                        <Upload className="w-8 h-8 text-[#2dd4bf]" />
+                    <div className="w-16 h-16 bg-muted/40 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-border/10 shadow-xl">
+                        <Upload className="w-8 h-8 text-primary" />
                     </div>
                     <p className="text-foreground font-semibold text-lg tracking-tight">
                         Drop files here or click to upload
@@ -93,12 +93,12 @@ export function DocumentUpload({ documents, onUpload, onRemove }: DocumentUpload
                             <div
                                 key={doc.id}
                                 className={cn(
-                                    "flex items-center gap-3 p-4 bg-[#0f172a]/80 border border-white/5 rounded-2xl transition-all hover:bg-[#0f172a]/100 group shadow-sm",
+                                    "flex items-center gap-3 p-4 bg-muted/30 border border-border/10 rounded-2xl transition-all hover:bg-muted/50 group shadow-sm",
                                     doc.status === "deleting" && "opacity-50 grayscale-[0.5]"
                                 )}
                             >
-                                <div className="w-10 h-10 bg-[#1e293b] rounded-xl flex items-center justify-center border border-white/5">
-                                    <FileText className={cn("w-5 h-5", doc.status === "deleting" ? "text-red-400" : "text-[#2dd4bf]")} />
+                                <div className="w-10 h-10 bg-muted/60 rounded-xl flex items-center justify-center border border-border/10">
+                                    <FileText className={cn("w-5 h-5", doc.status === "deleting" ? "text-destructive" : "text-primary")} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-semibold truncate text-foreground/90">{doc.name}</p>
