@@ -40,7 +40,7 @@ export function ConversationSidebar({
         >
             <div className="p-4 flex items-center justify-between">
                 {!isCollapsed && (
-                    <h2 className="font-semibold text-foreground/90 tracking-tight">Chat History</h2>
+                    <h2 className="font-semibold text-foreground/90 tracking-tight">Conversion History</h2>
                 )}
                 <Button
                     variant="ghost"

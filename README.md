@@ -2,6 +2,14 @@
 
 A modern **Retrieval-Augmented Generation (RAG)** chatbot built with Next.js 16, LangGraph, Pinecone, and Google Gemini. Upload documents to build your knowledge base and chat with AI that answers based on your content.
 
+<div>
+
+![Modern Dashboard](https://img.shields.io/badge/UI-Premium-success)
+![AI Powered](https://img.shields.io/badge/AI-Google_Gemini-blue)
+![Database](https://img.shields.io/badge/DB-Supabase_%26_Pinecone-green)
+
+</div>
+
 ## ✨ Features
 
 - **📄 Document Upload** - Support for PDF, TXT, and DOCX files
@@ -96,15 +104,49 @@ ragapp/
 
 ## 🔧 How It Works
 
-1. **Upload** → Documents are stored in Supabase and chunked using LangChain
-2. **Embed** → Text chunks are converted to vectors using Gemini Embeddings
-3. **Index** → Vectors are stored in Pinecone for fast similarity search
-4. **Query** → User questions retrieve relevant context via LangGraph
-5. **Generate** → Gemini generates answers grounded in your documents
+
+```mermaid
+graph TD
+    A[📄 User Upload] -->|Chunk & Store| B[🗄️ Supabase Storage]
+    A -->|Embed| C[⚡ Gemini Embeddings]
+    C -->|Vector Index| D[🌲 Pinecone DB]
+    E[👤 User Query] -->|Search| D
+    D -->|Retrieve Context| F[🧠 LangGraph Workflow]
+    F -->|Generate Answer| G[🤖 Gemini AI]
+```
+
+1. **📥 Ingestion** → Upload documents (PDF, Docx) which are securely stored in Supabase.
+2. **🧩 Processing** → Text is chunked and converted into vector embeddings.
+3. **💾 Indexing** → High-dimensional vectors are stored in Pinecone for semantic search.
+4. **🔍 Retrieval** → LangGraph orchestrates the search for relevant context.
+5. **✨ Generation** → Gemini synthesizes the ANSWER using your specific data.
+
+
+## 🧠 LangGraph Workflow
+
+The intelligent orchestration layer manages the conversation flow:
+
+```mermaid
+graph TD
+    Start([Start]) --> Decide{Decide Action}
+    Decide -->|"Need Context"| Retrieve[🔍 Retrieve Nodes]
+    Decide -->|"General Chat"| Generate[✨ Generate Answer]
+    
+    Retrieve --> Generate
+    Generate --> Validate{Validate Answer}
+    
+    Validate -->|"Valid"| End([End])
+    Validate -->|"Invalid (Max 3)"| End
+    Validate -->|"Invalid"| Decide
+```
+
+1. **Decide Node**: Analyzes the query to determine if retrieval is needed (e.g., specific facts) or if it can be answered directly (e.g., greetings).
+2. **Retrieve Node**: Fetches specialized context from Pinecone if required.
+3. **Generate Node**: Produces an answer using Gemini 2.5 Flash.
+4. **Validate Node**: Self-reflects on the answer to ensure it is factually correct and grounded in the context. If not, it loops back to retry (up to 3 times).
 
 ## 📄 License
-
-MIT
+This project is licensed under the ISC License.
 
 ---
 

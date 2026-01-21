@@ -76,7 +76,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                         ref={fileInputRef}
                         onChange={handleFileChange}
                     />
-                    <Button
+                    {/* <Button
                         type="button"
                         variant="ghost"
                         size="icon"
@@ -84,14 +84,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                         className="h-10 w-10 text-white/40 hover:text-[#2dd4bf] hover:bg-white/5 rounded-full flex-shrink-0 transition-colors"
                     >
                         <Paperclip className="h-5 w-5" />
-                    </Button>
+                    </Button> */}
 
                     <Textarea
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Ask anything about your documents..."
-                        className="min-h-[44px] max-h-[200px] border-0 focus-visible:ring-0 bg-transparent py-2.5 resize-none text-white placeholder:text-white/20"
+                        className="min-h-[44px] max-h-[40px] border-0 focus-visible:ring-0 bg-transparent py-2.5 resize-none text-white placeholder:text-white/20"
                         disabled={disabled}
                     />
 
@@ -99,13 +99,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
                         onClick={handleSend}
                         disabled={(!message.trim() && files.length === 0) || disabled}
                         className={cn(
-                            "h-10 w-10 rounded-full flex-shrink-0 transition-all duration-300",
+                            "h-12 w-12 rounded-md flex-shrink-0 transition-all duration-300",
                             message.trim() || files.length > 0
                                 ? "bg-[#2dd4bf]/20 text-[#2dd4bf] hover:bg-[#2dd4bf]/30 scale-100 shadow-[0_0_15px_rgba(45,212,191,0.2)]"
                                 : "bg-white/5 text-white/20 scale-95"
                         )}
                     >
-                        <Send className="h-5 w-5" />
+                        <Send className="h-7 w-7 fontsize-10px" />
                     </Button>
                 </div>
             </div>
