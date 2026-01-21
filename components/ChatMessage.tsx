@@ -1,5 +1,8 @@
+import React from "react";
 import { Bot, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMessageProps {
     role: "user" | "assistant";
@@ -40,12 +43,51 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
                             </span>
                         </span>
                     ) : (
-                        <>
-                            {content}
-                            {isStreaming && (
-                                <span className="inline-block w-2 h-4 ml-1 bg-[#2dd4bf] animate-pulse rounded-sm" />
-                            )}
-                        </>
+                        <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-pre:bg-gray-900 prose-pre:border prose-pre:border-white/10">
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    img: ({ node, ...props }) => {
+                                        if (props.src === "cursor" && props.alt === "cursor") {
+                                            return (
+                                                <span className="inline-block w-2 h-4 ml-1 bg-[#2dd4bf] animate-pulse rounded-sm align-middle" />
+                                            );
+                                        }
+                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                        return <img {...props} />;
+                                    },
+                                    code: ({ node, inline, className, children, ...props }: any) => {
+                                        if (Array.isArray(children)) {
+                                            return (
+                                                <code className={className} {...props}>
+                                                    {children.map((child, index) => {
+                                                        if (typeof child === 'string' && child.includes('![cursor](cursor)')) {
+                                                            const parts = child.split('![cursor](cursor)');
+                                                            return (
+                                                                <React.Fragment key={index}>
+                                                                    {parts.map((part, i) => (
+                                                                        <React.Fragment key={i}>
+                                                                            {part}
+                                                                            {i < parts.length - 1 && (
+                                                                                <span className="inline-block w-2 h-4 ml-1 bg-[#2dd4bf] animate-pulse rounded-sm align-middle" />
+                                                                            )}
+                                                                        </React.Fragment>
+                                                                    ))}
+                                                                </React.Fragment>
+                                                            );
+                                                        }
+                                                        return child;
+                                                    })}
+                                                </code>
+                                            );
+                                        }
+                                        return <code className={className} {...props}>{children}</code>;
+                                    }
+                                }}
+                            >
+                                {content + (isStreaming ? "![cursor](cursor)" : "")}
+                            </ReactMarkdown>
+                        </div>
                     )}
                 </div>
             </div>

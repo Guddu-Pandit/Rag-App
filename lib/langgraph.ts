@@ -20,8 +20,8 @@ const GraphState = Annotation.Root({
 
 // Initialize the model
 const model = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY || process.env.GEMINI_APT_KEY, // Fallback for typo in original file
-    model: "gemini-2.5-flash", // Using a capable model for reasoning
+    apiKey: process.env.GEMINI_API_KEY || process.env.GEMINI_APT_KEY, 
+    model: "gemini-2.0-flash", 
     temperature: 0,
 });
 
@@ -52,11 +52,7 @@ const decide_node = async (state: typeof GraphState.State) => {
         return { decision: parsed.action };
     } catch (e: any) {
         console.error("Decision node error:", e);
-        // If it's a quota or API error, or parsing error, handle it
-        if (e.message?.includes("429") || e.message?.includes("Quota exceeded") || e.message?.includes("Resource has been exhausted")) {
-            return { decision: "END", answer: `Error: Quota exceeded. Please check your plan and billing details.` };
-        }
-        return { decision: "GENERATE" }; // Fallback
+        return { decision: "END", answer: `Error in Decision Node: ${e.message}` };
     }
 };
 
@@ -96,6 +92,7 @@ const generate_node = async (state: typeof GraphState.State) => {
 
     Instructions:
     • Use a confident but neutral tone.
+    • Format your answer using bold text for key terms and important points when data is successfully retrieved only. Do not use any other formatting like lists, code blocks, italics, headings, or quotes.    
     • If context is provided but doesn't contain the answer, say "Not enough information."
     • If no context is provided, answer to the best of your ability (if it's general knowledge).
     
@@ -172,6 +169,7 @@ const validate_node = async (state: typeof GraphState.State) => {
 // --- Conditional Edges ---
 
 const route_decision = (state: typeof GraphState.State) => {
+    if (state.decision === "END") return END;
     if (state.decision === "NEED_RETRIEVAL") return "retrieve_node";
     if (state.decision === "GENERATE") return "generate_node";
     return "generate_node"; // fallback
