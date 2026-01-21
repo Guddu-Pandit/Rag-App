@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { pinecone, indexName } from "@/lib/pinecone";
+import { pinecone, indexName, deleteDocumentVectors } from "@/lib/pinecone";
 
 export async function DELETE(
     req: NextRequest,
@@ -32,7 +32,6 @@ export async function DELETE(
 
         // 2. Delete from Pinecone
         console.log("2. Deleting vectors from Pinecone...");
-        const index = pinecone.Index(indexName);
         try {
             // First, try to get the chunks from the database to know exactly which IDs to delete
             console.log(`   Fetching chunks for document ${documentId} from Supabase...`);
@@ -45,38 +44,9 @@ export async function DELETE(
                 console.warn("   WARNING: Failed to fetch chunk indices from DB:", chunksFetchError.message);
             }
 
-            const vectorIds: string[] = [];
-            if (chunks && chunks.length > 0) {
-                chunks.forEach(c => {
-                    vectorIds.push(`${documentId}-chunk-${c.chunk_index}`);
-                });
-            }
-
-            // Always attempt to delete the base ID just in case
-            vectorIds.push(documentId);
-
-            if (vectorIds.length > 0) {
-                console.log(`   Attempting to delete ${vectorIds.length} specific vector IDs from Pinecone...`);
-                console.log(`   First 5 IDs to delete: ${vectorIds.slice(0, 5).join(", ")}`);
-
-                // Pinecone delete by ID in batches of 1000
-                for (let i = 0; i < vectorIds.length; i += 1000) {
-                    const batch = vectorIds.slice(i, i + 1000);
-                    await index.deleteMany(batch);
-                }
-                console.log("   Pinecone: Specific IDs deletion command sent successfully.");
-            } else {
-                console.log("   No specific vector IDs found in DB to delete.");
-            }
-
-            // Also keep the filter as a secondary/redundancy check
-            // IMPORTANT: Some index types in Pinecone (like Starter/Serverless) 
-            // handle filters differently. This ensures we try both ways.
-            console.log(`   Applying Pinecone Filter as fallback: { documentId: "${documentId}" }`);
-            await index.deleteMany({
-                filter: { documentId: { "$eq": documentId } }
-            });
-            console.log("   Pinecone: Filter-based deletion command sent successfully.");
+            // Call the shared deletion function
+            // We pass chunks if we found them, otherwise it will just try to delete by filter
+            await deleteDocumentVectors(documentId, chunks || []);
 
         } catch (pineconeError: any) {
             console.error("   ERROR during Pinecone deletion:", pineconeError);

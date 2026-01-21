@@ -345,7 +345,7 @@ export default function Index() {
               </SheetTrigger>
               <SheetContent className="glass border-border/50">
                 <SheetHeader>
-                  <SheetTitle>Knowledge Base</SheetTitle>
+                  <SheetTitle>Documents</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6">
                   <DocumentUpload
