@@ -21,7 +21,7 @@ const GraphState = Annotation.Root({
 // Initialize the model
 const model = new ChatGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY || process.env.GEMINI_APT_KEY, 
-    model: "gemini-2.0-flash", 
+    model: "gemini-2.5-flash-lite", 
     temperature: 0,
 });
 
