@@ -35,12 +35,12 @@ export function ConversationSidebar({
         <div
             className={cn(
                 "h-full bg-sidebar border-r border-white/5 flex flex-col transition-all duration-300 shadow-xl",
-                isCollapsed ? "w-16" : "w-72"
+                isCollapsed ? "w-17" : "w-82"
             )}
         >
             <div className="p-4 flex items-center justify-between">
                 {!isCollapsed && (
-                    <h2 className="font-semibold text-foreground/90 tracking-tight">Conversations</h2>
+                    <h2 className="font-semibold text-foreground/90 tracking-tight">Chat History</h2>
                 )}
                 <Button
                     variant="ghost"

@@ -357,9 +357,9 @@ export default function Index() {
               </SheetContent>
             </Sheet>
 
-            <Button variant="ghost" size="icon">
+            {/* <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5 text-muted-foreground" />
-            </Button>
+            </Button> */}
           </div>
         </header>
 
