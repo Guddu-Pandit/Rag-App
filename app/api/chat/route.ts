@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { graph } from "@/lib/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 
 export async function POST(req: NextRequest) {
     try {
@@ -10,12 +11,13 @@ export async function POST(req: NextRequest) {
         }
 
         const result = await graph.invoke({
-            question: message,
+            messages: [new HumanMessage(message)],
         });
 
+        const lastMessage = result.messages[result.messages.length - 1];
+
         return NextResponse.json({
-            answer: result.answer,
-            context: result.context,
+            answer: lastMessage.content,
         });
 
     } catch (error: any) {

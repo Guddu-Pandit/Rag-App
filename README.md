@@ -24,7 +24,7 @@ A modern **Retrieval-Augmented Generation (RAG)** chatbot built with Next.js 16,
 | Category | Technology |
 |----------|------------|
 | **Framework** | Next.js 16 (App Router) |
-| **AI/LLM** | Google Gemini 2.5 Flash |
+| **AI/LLM** | Google Gemini 2.5 Flash Lite |
 | **Orchestration** | LangGraph |
 | **Vector DB** | Pinecone |
 | **Storage** | Supabase |
@@ -58,6 +58,11 @@ PINECONE_INDEX=rag
 
 # Google Gemini
 GEMINI_APT_KEY=your_gemini_api_key
+
+# LangSmith (Optional- For Tracing)
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_PROJECT=Rag-App
 ```
 
 ### Environment Variables Reference
@@ -97,7 +102,7 @@ ragapp/
 │   └── DocumentUpload.tsx
 └── lib/
     ├── embeddings.ts      # Gemini embeddings
-    ├── langgraph.ts       # RAG workflow
+    ├── langgraph.ts       # RAG workflow (Hierarchical Tracing)
     ├── pinecone.ts        # Vector DB client
     └── supabase.ts        # Storage client
 ```
@@ -124,30 +129,29 @@ graph TD
 
 ## 🧠 LangGraph Workflow
 
-The intelligent orchestration layer manages the conversation flow:
+The intelligent orchestration layer manages the conversation flow with hierarchical tracing for **LangSmith**:
 
 ```mermaid
 graph TD
-    Start([Start]) --> Decide{Decide Action}
-    Decide -->|"Need Context"| Retrieve[🔍 Retrieve Nodes]
-    Decide -->|"General Chat"| Generate[✨ Generate Answer]
+    Start([Start]) --> Agent[🤖 Agent Node]
+    subgraph Agent_Internal [Agent:Generate]
+        Agent
+    end
     
-    Retrieve --> Generate
-    Generate --> Validate{Validate Answer}
+    Agent -->|CallTools| Tool[🔍 Tool Node]
+    subgraph Tool_Internal [Tool:VectorSearch]
+        Tool
+    end
     
-    Validate -->|"Valid"| End([End])
-    Validate -->|"Invalid (Max 3)"| End
-    Validate -->|"Invalid"| Decide
+    Tool --> Agent
+    Agent -->|Finish| End([End])
 ```
 
-1. **Decide Node**: Analyzes the query to determine if retrieval is needed (e.g., specific facts) or if it can be answered directly (e.g., greetings).
-2. **Retrieve Node**: Fetches specialized context from Pinecone if required.
-3. **Generate Node**: Produces an answer using Gemini 2.5 Flash.
-4. **Validate Node**: Self-reflects on the answer to ensure it is factually correct and grounded in the context. If not, it loops back to retry (up to 3 times).
+1. **Agent Node (`Agent:Generate`)**: The starting point of the graph. It uses Gemini 2.5 Flash Lite to decide whether to use the vector search tool or provide a final answer.
+2. **Conditional Edge**: Routes to `Tool` if the LLM initiates a `PineconeVectorSearch` call, or to `END` if a final response is ready.
+3. **Tool Node (`Tool:VectorSearch`)**: Executes the specialized `PineconeVectorSearch` tool to fetch context from the knowledge base.
+4. **Loop Management**: After tool execution, the graph loops back to the `Agent` node to incorporate the retrieved context into the final answer.
 
 ## 📄 License
 This project is licensed under the ISC License.
 
----
-
-Developed with ❤️ by [Guddu-Pandit](https://github.com/Guddu-Pandit)

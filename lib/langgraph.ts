@@ -1,203 +1,141 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { Annotation, StateGraph, START, END } from "@langchain/langgraph";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { pinecone, indexName } from "@/lib/pinecone";
 import { getEmbeddings } from "@/lib/embeddings";
+import { BaseMessage, HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+import { RunnableLambda } from "@langchain/core/runnables";
 
 // Define the state for our RAG graph
 const GraphState = Annotation.Root({
-    question: Annotation<string>(),
-    context: Annotation<string[]>({
+    messages: Annotation<BaseMessage[]>({
         reducer: (x, y) => x.concat(y),
         default: () => [],
     }),
-    answer: Annotation<string>(),
     loopCount: Annotation<number>({
         reducer: (x, y) => y, // Take the latest value
         default: () => 0,
     }),
-    decision: Annotation<"NEED_RETRIEVAL" | "GENERATE" | "VALIDATE" | "END">(),
 });
 
 // Initialize the model
 const model = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY || process.env.GEMINI_APT_KEY, 
-    model: "gemini-2.5-flash-lite", 
+    apiKey: process.env.GEMINI_API_KEY || process.env.GEMINI_APT_KEY,
+    model: "gemini-2.5-flash-lite",
     temperature: 0,
 });
 
+// --- Tools ---
+
+const searchTool = tool(
+    async ({ query }) => {
+        console.log(`Searching for: ${query}`);
+        const embedding = await getEmbeddings(query);
+        const index = pinecone.Index(indexName);
+        const queryResponse = await index.query({
+            vector: embedding as number[],
+            topK: 5,
+            includeMetadata: true,
+        });
+
+        const context = queryResponse.matches
+            .map((match) => (match.metadata as any)?.text)
+            .filter(Boolean) as string[];
+
+        return context.join("\n\n");
+    },
+    {
+        name: "PineconeVectorSearch",
+        description: "Search for context from the knowledge base in Pinecone.",
+        schema: z.object({
+            query: z.string().describe("The search query to use for retrieval."),
+        }),
+    }
+);
+
+const tools = [searchTool];
+const toolNode = new ToolNode(tools);
+
+// Initialize the model with tools
+const modelWithTools = model.bindTools(tools);
+
 // --- Nodes ---
 
-// Node: Decide next action
-const decide_node = async (state: typeof GraphState.State) => {
-    const { question } = state;
+// Define the agent logic as a RunnableLambda for better tracing
+const agent_generate = RunnableLambda.from(async (state: typeof GraphState.State) => {
+    const { messages, loopCount } = state;
 
-    const prompt = `You are an autonomous RAG agent. Decide the next action based on the question.
-    
-    Available actions:
-    1. NEED_RETRIEVAL – The question requires external knowledge or context (facts, specific data).
-    2. GENERATE – You can answer using general reasoning or if it's a greeting/simple query.
-    
-    Question: "${question}"
-    
-    Return ONLY valid JSON:
-    {
-      "action": "NEED_RETRIEVAL" | "GENERATE",
-      "reason": "short explanation"
-    }`;
-
-    try {
-        const result = await model.invoke(prompt);
-        const text = result.content.toString().replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(text);
-        return { decision: parsed.action };
-    } catch (e: any) {
-        console.error("Decision node error:", e);
-        return { decision: "END", answer: `Error in Decision Node: ${e.message}` };
-    }
-};
-
-// Node: Retrieve context from Pinecone
-const retrieve_node = async (state: typeof GraphState.State) => {
-    const { question } = state;
-    const embedding = await getEmbeddings(question);
-
-    const index = pinecone.Index(indexName);
-    const queryResponse = await index.query({
-        vector: embedding as number[],
-        topK: 5,
-        includeMetadata: true,
-    });
-
-    const context = queryResponse.matches
-        .map((match) => (match.metadata as any)?.text)
-        .filter(Boolean) as string[];
-
-    return { context };
-};
-
-// Node: Generate answer using the model
-const generate_node = async (state: typeof GraphState.State) => {
-    const { question, context } = state;
-
-    const contextText = context.join("\n\n");
-    const prompt = `You are an accurate RAG assistant. Answer the question using the provided context if available.
-        
-    <Context>
-    ${contextText || "No context provided."}
-    </Context>
-
-    <Question>
-    ${question}
-    </Question>
-
-    Instructions:
-    • Use a confident but neutral tone.
-    • Format your answer using bold text for key terms and important points when data is successfully retrieved only. Do not use any other formatting like lists, code blocks, italics, headings, or quotes.    
-    • If context is provided but doesn't contain the answer, say "Not enough information."
-    • If no context is provided, answer to the best of your ability (if it's general knowledge).
-    
-    Answer:`;
-
-    try {
-        const response = await model.invoke(prompt);
-        return { answer: response.content.toString() };
-    } catch (e: any) {
-        console.error("Generation error:", e);
-        if (e.message?.includes("429") || e.message?.includes("Quota exceeded") || e.message?.includes("Resource has been exhausted")) {
-            return { answer: `Error: Quota exceeded. Please check your plan and billing details.` };
-        }
-        return { answer: `Error generating response: ${e.message}` };
-    }
-};
-
-// Node: Validate the answer
-const validate_node = async (state: typeof GraphState.State) => {
-    const { question, context, answer, loopCount } = state;
-    const currentLoop = loopCount + 1;
-
-    // Strict validation prompt
-    const prompt = `Validate the generated answer.
-    
-    Question: ${question}
-    Context: ${context.join("\n")}
-    Answer: ${answer}
-    
-    Check:
-    1. Is it factually correct?
-    2. Is it supported by context?
-    3. Does it answer the question?
-    
-    Return ONLY valid JSON:
-    {
-      "isValid": boolean,
-      "action": "END" | "NEED_RETRIEVAL" | "GENERATE",
-      "reason": "explanation"
-    }`;
-
-    try {
-        const result = await model.invoke(prompt);
-        const text = result.content.toString().replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(text);
-
-        let nextAction = parsed.action;
-
-        // Force end if max loops reached
-        if (currentLoop >= 3) {
-            nextAction = "END";
-            // Optional: If invalid and max loops reached, we might want to override the answer, 
-            // but for now we'll just end.
-        } else if (parsed.isValid) {
-            nextAction = "END";
-        }
-
-        // If the validator says NEED_RETRIEVAL but we are nearly out of loops, maybe just END?
-        // Logic kept simple as per requirements.
-
+    // Safety check for max loops
+    if (loopCount >= 3) {
         return {
-            decision: nextAction,
-            loopCount: currentLoop
+            messages: [new AIMessage("I've reached the maximum number of attempts to find an answer. Not enough information found.")],
         };
-    } catch (e: any) {
-        console.error("Validation error:", e);
-        if (e.message?.includes("429") || e.message?.includes("Quota exceeded") || e.message?.includes("Resource has been exhausted")) {
-            return { decision: "END", loopCount: currentLoop, answer: `Validation Error: Quota exceeded. Please check your plan and billing details.` };
-        }
-        return { decision: "END", loopCount: currentLoop };
     }
+
+    const systemPrompt = new SystemMessage(`
+        You are a helpful and accurate RAG assistant. 
+        Your primary goal is to answer user questions using the knowledge base.
+        
+        STRICT INSTRUCTIONS:
+        1. ALWAYS use the 'search' tool first for any factual question or when the user asks for information.
+        2. Do NOT ask the user for references, documents, or additional context UNLESS the 'search' tool returns no results or insufficient information.
+        3. If you find the answer in the context provided by the search tool, answer the question directly.
+        4. If after searching you still don't have enough information, then and only then, ask the user for more references or context.
+        5. Format your final answer using bold text for key terms and important points.
+    `);
+
+    const response = await modelWithTools.invoke([systemPrompt, ...messages]);
+
+    return {
+        messages: [response],
+        loopCount: loopCount + 1,
+    };
+}).withConfig({ runName: "Agent:Generate" });
+
+// Wrapper agent node to maintain graph structure while providing the Trace Group
+const agent_node = async (state: typeof GraphState.State) => {
+    // This allows LangSmith to show "Agent" as the parent and "Agent:Generate" inside it
+    return await agent_generate.invoke(state);
 };
+
+// Node specifically for vector search tracing
+const vector_search_tool = RunnableLambda.from(async (state: typeof GraphState.State) => {
+    return await toolNode.invoke(state);
+}).withConfig({ runName: "Tool:VectorSearch" });
 
 // --- Conditional Edges ---
 
-const route_decision = (state: typeof GraphState.State) => {
-    if (state.decision === "END") return END;
-    if (state.decision === "NEED_RETRIEVAL") return "retrieve_node";
-    if (state.decision === "GENERATE") return "generate_node";
-    return "generate_node"; // fallback
-};
+const should_continue = (state: typeof GraphState.State) => {
+    const { messages, loopCount } = state;
+    const lastMessage = messages[messages.length - 1] as AIMessage;
 
-const route_validation = (state: typeof GraphState.State) => {
-    if (state.decision === "END") return END;
-    if (state.decision === "NEED_RETRIEVAL") return "retrieve_node";
-    if (state.decision === "GENERATE") return "generate_node";
-    return END;
+    if (loopCount >= 3) {
+        return "Finish";
+    }
+
+    if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+        return "CallTools";
+    }
+
+    return "Finish";
 };
 
 // --- Graph Definition ---
 
 const workflow = new StateGraph(GraphState)
-    .addNode("decide_node", decide_node)
-    .addNode("retrieve_node", retrieve_node)
-    .addNode("generate_node", generate_node)
-    .addNode("validate_node", validate_node)
+    .addNode("Agent", agent_node)
+    .addNode("Tool", vector_search_tool)
 
-    .addEdge(START, "decide_node")
+    .addEdge(START, "Agent")
 
-    .addConditionalEdges("decide_node", route_decision)
+    .addConditionalEdges("Agent", should_continue, {
+        "CallTools": "Tool",
+        "Finish": END
+    })
 
-    .addEdge("retrieve_node", "generate_node")
-    .addEdge("generate_node", "validate_node")
-
-    .addConditionalEdges("validate_node", route_validation);
+    .addEdge("Tool", "Agent");
 
 // Compile the graph
-export const graph = workflow.compile();
+export const graph = workflow.compile({ name: "LangGraph-Agent-RAG" });
