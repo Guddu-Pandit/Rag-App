@@ -8,9 +8,10 @@ interface ChatMessageProps {
     role: "user" | "assistant";
     content: string;
     isStreaming?: boolean;
+    status?: string;
 }
 
-export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
+export function ChatMessage({ role, content, isStreaming, status }: ChatMessageProps) {
     const isUser = role === "user";
 
     return (
@@ -33,15 +34,17 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
                     {isUser ? "You" : "Assistant"}
                 </p>
                 <div className="text-[15px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
-                    {!isUser && content === "" && isStreaming ? (
-                        <span className="flex items-center gap-1.5 text-muted-foreground italic">
-                            Thinking
-                            <span className="flex gap-0.5">
-                                <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]" />
-                                <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                <span className="w-1 h-1 bg-current rounded-full animate-bounce" />
+                    {!isUser && content === "" && (isStreaming || status) ? (
+                        <div className="flex flex-col gap-2">
+                            <span className="flex items-center gap-1.5 text-muted-foreground italic">
+                                {status || "Thinking..."}
+                                <span className="flex gap-0.5">
+                                    <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                    <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                    <span className="w-1 h-1 bg-current rounded-full animate-bounce" />
+                                </span>
                             </span>
-                        </span>
+                        </div>
                     ) : (
                         <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-pre:bg-gray-900 prose-pre:border prose-pre:border-white/10">
                             <ReactMarkdown

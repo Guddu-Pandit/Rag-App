@@ -20,6 +20,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  status?: string;
 }
 
 interface Conversation {
@@ -190,26 +191,60 @@ export default function Index() {
         throw new Error(errorData.error || "Chat failed");
       }
 
-      const data = await res.json();
-      const responseText = data.answer;
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader available");
 
-      // Simulate streaming for aesthetic effect (since LangGraph result is returned at once)
-      for (let i = 0; i <= responseText.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeConversationId
-              ? {
-                ...c,
-                messages: c.messages.map((m) =>
-                  m.id === assistantMessage.id
-                    ? { ...m, content: responseText.slice(0, i) }
-                    : m
-                ),
+      const decoder = new TextDecoder();
+      let assistantText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "content") {
+                assistantText += data.content;
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === activeConversationId
+                      ? {
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === assistantMessage.id
+                            ? { ...m, content: assistantText }
+                            : m
+                        ),
+                      }
+                      : c
+                  )
+                );
+              } else if (data.type === "status") {
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === activeConversationId
+                      ? {
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === assistantMessage.id
+                            ? { ...m, status: data.content }
+                            : m
+                        ),
+                      }
+                      : c
+                  )
+                );
               }
-              : c
-          )
-        );
+            } catch (e) {
+              console.error("Error parsing SSE chunk", e);
+            }
+          }
+        }
       }
     } catch (error: any) {
       console.error("Chat error:", error);
@@ -371,6 +406,7 @@ export default function Index() {
                 key={message.id}
                 role={message.role}
                 content={message.content}
+                status={message.status}
                 isStreaming={
                   isStreaming &&
                   index === activeConversation.messages.length - 1 &&

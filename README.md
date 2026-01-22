@@ -75,7 +75,10 @@ LANGCHAIN_PROJECT=Rag-App
 | `BUCKET_NAME` | Supabase storage bucket name for documents |
 | `PINECONE_API_KEY` | Your Pinecone API key |
 | `PINECONE_INDEX` | Pinecone index name for vector storage |
-| `GEMINI_APT_KEY` | Google Gemini API key for LLM and embeddings |
+| `GEMINI_API_KEY` | Google Gemini API key for LLM and embeddings |
+| `LANGCHAIN_TRACING_V2` | Set to `true` to enable LangSmith tracing (optional) |
+| `LANGCHAIN_API_KEY` | LangSmith API key for tracing (optional) |
+| `LANGCHAIN_PROJECT` | LangSmith project name (optional) |
 
 ### 3. Run Development Server
 
